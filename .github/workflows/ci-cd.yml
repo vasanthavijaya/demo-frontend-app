@@ -14,18 +14,14 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18'
-
       - name: Install dependencies
         run: npm ci
-
       - name: Run tests
-        run: npm test
-
+        run: npm test -- --watchAll=false
       - name: Build application
         run: npm run build
 
@@ -36,15 +32,16 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-
+      - name: Configure Docker for insecure registry
+        run: |
+          echo '{"insecure-registries":["192.168.0.136:8082"]}' | sudo tee /etc/docker/daemon.json
+          sudo service docker restart
       - name: Log in to Nexus Docker registry
-        run: echo "${{ secrets.NEXUS_PASSWORD }}" | docker login nexus:8082 -u "${{ secrets.NEXUS_USERNAME }}" --password-stdin
-
+        run: echo "${{ secrets.NEXUS_PASSWORD }}" | docker login 192.168.0.136:8082 -u "${{ secrets.NEXUS_USERNAME }}" --password-stdin
       - name: Build Docker image
-        run: docker build -t nexus:8082/demo-frontend-app:${{ github.run_number }} .
-
+        run: docker build -t 192.168.0.136:8082/demo-frontend-app:${{ github.run_number }} .
       - name: Push Docker image
-        run: docker push nexus:8082/demo-frontend-app:${{ github.run_number }}
+        run: docker push 192.168.0.136:8082/demo-frontend-app:${{ github.run_number }}
 
   update-manifests:
     needs: build-and-push-docker
@@ -53,12 +50,11 @@ jobs:
       - name: Checkout manifest repo
         uses: actions/checkout@v3
         with:
-          repository: <your-manifest-repo>
+          repository: vasanthavijaya/manifest-repo
           token: ${{ secrets.MANIFEST_REPO_TOKEN }}
-
       - name: Update image tag
         run: |
-          sed -i 's|image: nexus:8082/demo-frontend-app:.*|image: nexus:8082/demo-frontend-app:${{ github.run_number }}|' prod/deployment.yaml
+          sed -i 's|image: 192.168.0.136:8082/demo-frontend-app:.*|image: 192.168.0.136:8082/demo-frontend-app:${{ github.run_number }}|' prod/deployment.yaml
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
           git add prod/deployment.yaml
