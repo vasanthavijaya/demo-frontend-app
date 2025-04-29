@@ -1,0 +1,66 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build application
+        run: npm run build
+
+  build-and-push-docker:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Log in to Nexus Docker registry
+        run: echo "${{ secrets.NEXUS_PASSWORD }}" | docker login nexus:8082 -u "${{ secrets.NEXUS_USERNAME }}" --password-stdin
+
+      - name: Build Docker image
+        run: docker build -t nexus:8082/demo-frontend-app:${{ github.run_number }} .
+
+      - name: Push Docker image
+        run: docker push nexus:8082/demo-frontend-app:${{ github.run_number }}
+
+  update-manifests:
+    needs: build-and-push-docker
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout manifest repo
+        uses: actions/checkout@v3
+        with:
+          repository: <your-manifest-repo>
+          token: ${{ secrets.MANIFEST_REPO_TOKEN }}
+
+      - name: Update image tag
+        run: |
+          sed -i 's|image: nexus:8082/demo-frontend-app:.*|image: nexus:8082/demo-frontend-app:${{ github.run_number }}|' prod/deployment.yaml
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add prod/deployment.yaml
+          git commit -m "Update demo-frontend-app image to ${{ github.run_number }}"
+          git push
