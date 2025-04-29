@@ -39,9 +39,9 @@ jobs:
       - name: Log in to Nexus Docker registry
         run: echo "${{ secrets.NEXUS_PASSWORD }}" | docker login 192.168.0.136:8082 -u "${{ secrets.NEXUS_USERNAME }}" --password-stdin
       - name: Build Docker image
-        run: docker build -t 192.168.0.136:8082/demo-frontend-app:${{ github.run_number }} .
+        run: docker build -t 192.168.0.136:8082/demo-frontend:${{ github.run_number }} .
       - name: Push Docker image
-        run: docker push 192.168.0.136:8082/demo-frontend-app:${{ github.run_number }}
+        run: docker push 192.168.0.136:8082/demo-frontend:${{ github.run_number }}
 
   update-manifests:
     needs: build-and-push-docker
@@ -54,9 +54,9 @@ jobs:
           token: ${{ secrets.MANIFEST_REPO_TOKEN }}
       - name: Update image tag
         run: |
-          sed -i 's|image: 192.168.0.136:8082/demo-frontend-app:.*|image: 192.168.0.136:8082/demo-frontend-app:${{ github.run_number }}|' prod/deployment.yaml
+          sed -i 's|image: 192.168.0.136:8082/demo-frontend:.*|image: 192.168.0.136:8082/demo-frontend:${{ github.run_number }}|' prod/deployment.yaml
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
           git add prod/deployment.yaml
-          git commit -m "Update demo-frontend-app image to ${{ github.run_number }}"
+          git commit -m "Update demo-frontend image to ${{ github.run_number }}"
           git push
