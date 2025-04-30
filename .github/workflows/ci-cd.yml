@@ -32,16 +32,12 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-      - name: Configure Docker for insecure registry
-        run: |
-          echo '{"insecure-registries":["9069-82-36-205-255.ngrok-free.app"]}' | sudo tee /etc/docker/daemon.json
-          sudo service docker restart
-      - name: Log in to Nexus Docker registry
-        run: echo "${{ secrets.NEXUS_PASSWORD }}" | docker login 9069-82-36-205-255.ngrok-free.app -u "${{ secrets.NEXUS_USERNAME }}" --password-stdin
+      - name: Log in to Docker Hub
+        run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
       - name: Build Docker image
-        run: docker build -t 9069-82-36-205-255.ngrok-free.app/demo-frontend:${{ github.run_number }} .
+        run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/demo-frontend:${{ github.run_number }} .
       - name: Push Docker image
-        run: docker push 9069-82-36-205-255.ngrok-free.app/demo-frontend:${{ github.run_number }}
+        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/demo-frontend:${{ github.run_number }}
 
   update-manifests:
     needs: build-and-push-docker
@@ -54,7 +50,7 @@ jobs:
           token: ${{ secrets.MANIFEST_REPO_TOKEN }}
       - name: Update image tag
         run: |
-          sed -i 's|image: .*demo-frontend:.*|image: 9069-82-36-205-255.ngrok-free.app/demo-frontend:${{ github.run_number }}|' prod/deployment.yaml
+          sed -i 's|image: .*demo-frontend:.*|image: ${{ secrets.DOCKERHUB_USERNAME }}/demo-frontend:${{ github.run_number }}|' prod/deployment.yaml
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
           git add prod/deployment.yaml
