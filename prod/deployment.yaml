@@ -32,22 +32,22 @@ spec:
       targetPort: 80
   type: ClusterIP
 
----
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: demo-frontend
-  namespace: argocd
-spec:
-  project: default
-  source:
-    repoURL: https://github.com/vasanthavijaya/demo-frontend-app.git
-    targetRevision: main
-    path: .
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: default
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
+#---
+#apiVersion: argoproj.io/v1alpha1
+#kind: Application
+#metadata:
+#  name: demo-frontend
+#  namespace: argocd
+#spec:
+#  project: default
+#  source:
+#    repoURL: https://github.com/vasanthavijaya/demo-frontend-app.git
+#    targetRevision: main
+#    path: .
+#  destination:
+#    server: https://kubernetes.default.svc
+#    namespace: default
+#  syncPolicy:
+#    automated:
+#      prune: true
+#      selfHeal: true

@@ -43,11 +43,8 @@ jobs:
     needs: build-and-push-docker
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout manifest repo
+      - name: Checkout code
         uses: actions/checkout@v3
-        with:
-          repository: vasanthavijaya/manifest-repo
-          token: ${{ secrets.MANIFEST_REPO_TOKEN }}
       - name: Update image tag
         run: |
           sed -i 's|image: .*demo-frontend:.*|image: ${{ secrets.DOCKERHUB_USERNAME }}/demo-frontend:${{ github.run_number }}|' prod/deployment.yaml
