@@ -1,0 +1,76 @@
+pipeline {
+    agent any
+    environment {
+        BUILD_NUMBER = "${env.BUILD_NUMBER}"
+    }
+    tools {
+        nodejs 'Node18' // Uses Node.js 18.7.1
+    }
+    stages {
+        stage('Checkout') {
+            steps {
+                script {
+                    git branch: 'main', url: 'https://github.com/vasanthavijaya/demo-frontend-app.git'
+
+                    def lastCommitMessage = sh(script: "git log -1 --pretty=%B", returnStdout: true).trim()
+                    if (lastCommitMessage.contains('Update demo-frontend image')) {
+                        error 'Skipping pipeline: Last commit is an automated manifest update'
+                    }
+                }
+            }
+        }
+
+        stage('SonarQube Scan') {
+            steps {
+               withSonarQubeEnv('MySonarQubeServer') {
+                tool name: 'SonarScanner'
+            }
+        }
+    }
+
+        stage('Build and Test') {
+            steps {
+                sh 'npm ci'
+                sh 'npm test -- --watchAll=false'
+                sh 'npm run build'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                sh 'docker build -t vijayajala/demo-frontend:${BUILD_NUMBER} .'
+            }
+        }
+
+        stage('Push to Docker Hub') {
+            steps {
+                withCredentials([string(credentialsId: 'dockerhub', variable: 'dockerhub')]) {
+                    sh '''
+                        docker login -u vijayajala -p ${dockerhub}
+                        docker push vijayajala/demo-frontend:${BUILD_NUMBER}
+                    '''
+                }
+            }
+        }
+
+        stage('Update Manifest') {
+            environment {
+                GIT_REPO_NAME = "demo-frontend"
+                GIT_USER_NAME = "vasanthavijaya"
+            }
+            steps {
+                withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]){
+                sh '''
+                git config user.name "vijay"
+                git config user.email "vijay@ci.com"
+                git pull origin main --rebase
+                sed -i "s|image: .*demo-frontend:.*|image: vijayajala/demo-frontend:${BUILD_NUMBER}|" prod/deployment.yaml
+                git add prod/deployment.yaml
+                git commit -m "Update demo-frontend image to ${BUILD_NUMBER}"
+                git push https://${GITHUB_TOKEN}@github.com/vasanthavijaya/demo-frontend-app.git main
+                '''
+            }
+        }
+     }
+   }
+ }
