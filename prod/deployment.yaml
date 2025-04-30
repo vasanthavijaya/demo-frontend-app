@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: demo-frontend
-          image: vijayajala/demo-frontend:20
+          image: vijayajala/demo-frontend:21
           ports:
             - containerPort: 80
 ---
